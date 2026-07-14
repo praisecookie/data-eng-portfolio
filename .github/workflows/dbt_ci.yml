@@ -34,10 +34,13 @@ jobs:
           # 1. Navigate into your exact dbt folder
           cd dbt_transformations_07
 
-          # 2. Automatically grab your profile name from your dbt_project.yml
+          # 2. Extract the exact GCP Project ID directly from your GCP_SA_KEY secret
+          GCP_PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+
+          # 3. Grab profile name from dbt_project.yml
           PROFILE_NAME=$(grep -i 'profile:' dbt_project.yml | awk '{print $2}' | tr -d "'\"" | tr -d '\r')
 
-          # 3. Dynamically build the profiles.yml file using your project info
+          # 4. Generate profiles.yml using the exact Project ID
           cat > profiles.yml <<EOF
           $PROFILE_NAME:
             target: dev
@@ -45,16 +48,14 @@ jobs:
               dev:
                 type: bigquery
                 method: oauth
-                project: data-engineering-portfolio
+                project: $GCP_PROJECT_ID
                 dataset: retail_dw
                 threads: 4
                 timeout_seconds: 300
                 location: US
           EOF
 
-          # 4. Tell dbt to look for profiles.yml in this current folder instead of ~/.dbt/
           export DBT_PROFILES_DIR=$(pwd)
 
-          # 5. Test the connection and run the data tests!
           dbt debug
           dbt test
